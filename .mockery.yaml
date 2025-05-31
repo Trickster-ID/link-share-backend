@@ -1,0 +1,13 @@
+all: true
+testonly: false
+inpackage: false
+with-expecter: true
+outpkg: "mocks"
+#filename: "mock_{{.InterfaceName}}.go"
+dir: app/mocks/{{ replaceAll .InterfaceDirRelative "internal" "internal_" }}
+packages:
+  oauth2:
+    config:
+      recursive: true
+      exclude:
+        - "app/global/db"
