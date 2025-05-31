@@ -1,0 +1,6 @@
+# yaml-language-server: ...
+package: generated
+generate:
+  fiber-server: true
+  models: true
+output: generated/api_gen.go

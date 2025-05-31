@@ -1,0 +1,68 @@
+openapi: "3.0.0"
+info:
+  title: Ping API
+  version: 1.0.0
+  license:
+    name: MIT
+servers:
+  - url: http://localhost:80
+  - url: http://localhost:81
+
+paths:
+  /ping:
+    get:
+      summary: Health check
+      operationId: ping
+      responses:
+        '200':
+          description: Pong response
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/BaseResponse"
+                  - type: object
+                    properties:
+                      data:
+                        type: string
+                        example: pong
+components:
+  schemas:
+    BaseResponse:
+      type: object
+      properties:
+        status_message:
+          type: string
+          example: success
+        data:
+          type: object
+        total_data:
+          type: integer
+        url:
+          type: string
+        error:
+          $ref: "#/components/schemas/ErrorLog"
+      required:
+        - status_message
+    ErrorLog:
+      type: object
+      properties:
+        message:
+          description: User-facing error message
+          oneOf:
+            - type: string
+            - type: object
+        system_message:
+          description: Internal or system-level error details
+          oneOf:
+            - type: string
+            - type: object
+        line:
+          type: string
+          description: Line where the error occurred
+        filename:
+          type: string
+          description: Filename where the error occurred
+        function:
+          type: string
+          description: Function name where the error occurred

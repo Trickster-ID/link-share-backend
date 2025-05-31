@@ -4,7 +4,7 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"errors"
-	"github.com/gofiber/fiber/v3"
+	"github.com/gofiber/fiber/v2"
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/sirupsen/logrus"
 	"linkshare/app/global/helper"
@@ -16,7 +16,7 @@ import (
 )
 
 func TokenMiddleware() fiber.Handler {
-	return func(f fiber.Ctx) error {
+	return func(f *fiber.Ctx) error {
 		authHeader := f.Get("Authorization")
 		errLog := helper.WriteLogWoP(errors.New("unauthorized"), http.StatusUnauthorized, "Invalid token")
 		if authHeader == "" {
@@ -47,7 +47,7 @@ func TokenMiddleware() fiber.Handler {
 }
 
 func BasicAuthMiddleware() fiber.Handler {
-	return func(f fiber.Ctx) error {
+	return func(f *fiber.Ctx) error {
 		// Get the Authorization header
 		auth := f.Get("Authorization")
 		if auth == "" {

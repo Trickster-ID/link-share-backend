@@ -1,13 +1,13 @@
 package helper
 
 import (
-	"github.com/gofiber/fiber/v3"
+	"github.com/gofiber/fiber/v2"
 	"linkshare/app/global/model"
 	"net/http"
 	"reflect"
 )
 
-func Response(ctx fiber.Ctx, response *model.BaseResponse, statusCodes ...int) error {
+func Response(ctx *fiber.Ctx, response *model.BaseResponse, statusCodes ...int) error {
 	statusCode := http.StatusOK
 	if len(statusCodes) > 0 {
 		statusCode = statusCodes[0]

@@ -3,10 +3,12 @@ package main
 import (
 	"context"
 	"fmt"
-	"github.com/gofiber/fiber/v3"
+	"github.com/gofiber/fiber/v2"
 	"github.com/sirupsen/logrus"
 	"linkshare/app/configuration"
+	"linkshare/app/controllers"
 	"linkshare/app/global/db"
+	"linkshare/generated"
 	"log"
 	"os"
 	"os/signal"
@@ -27,8 +29,12 @@ func main() {
 
 	switch os.Args[1] {
 	case "main":
-		fiberServer := InitializeFiberServer(postgresParam, mongoParam, redisParam)
-		startHttpServer(fiberServer)
+		app := fiber.New()
+		configuration.FiberInitLogger(app)
+		newServer := controllers.NewServer()
+		_ = InitializeFiberServer(postgresParam, mongoParam, redisParam)
+		generated.RegisterHandlers(app, newServer)
+		startHttpServer(app)
 	default:
 		logrus.Fatal("invalid command")
 	}

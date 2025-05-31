@@ -3,7 +3,7 @@
 package mocks
 
 import (
-	fiber "github.com/gofiber/fiber/v3"
+	fiber "github.com/gofiber/fiber/v2"
 	mock "github.com/stretchr/testify/mock"
 )
 

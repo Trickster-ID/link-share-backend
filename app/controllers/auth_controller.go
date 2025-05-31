@@ -1,7 +1,7 @@
 package controllers
 
 import (
-	"github.com/gofiber/fiber/v3"
+	"github.com/gofiber/fiber/v2"
 	"linkshare/app/dto"
 	"linkshare/app/global/helper"
 	"linkshare/app/global/model"
@@ -9,8 +9,8 @@ import (
 )
 
 type IAuthController interface {
-	Login(f fiber.Ctx) error
-	RefreshToken(f fiber.Ctx) error
+	Login(f *fiber.Ctx) error
+	RefreshToken(f *fiber.Ctx) error
 }
 
 type authController struct {
@@ -23,10 +23,10 @@ func NewAuthController(authUseCase usecases.IAuthUseCase) IAuthController {
 	}
 }
 
-func (c *authController) Login(f fiber.Ctx) error {
+func (c *authController) Login(f *fiber.Ctx) error {
 	response := &model.BaseResponse{}
 	loginModel := new(dto.LoginRequest)
-	if err := f.Bind().JSON(loginModel); err != nil {
+	if err := f.BodyParser(&loginModel); err != nil {
 		response.ErrorLog = helper.WriteLog(err, 400, "parsing body request is failed")
 		return helper.Response(f, response)
 	}
@@ -37,10 +37,10 @@ func (c *authController) Login(f fiber.Ctx) error {
 	return helper.Response(f, response)
 }
 
-func (c *authController) RefreshToken(f fiber.Ctx) error {
+func (c *authController) RefreshToken(f *fiber.Ctx) error {
 	response := &model.BaseResponse{}
 	request := new(dto.RefreshTokenRequest)
-	if err := f.Bind().JSON(request); err != nil {
+	if err := f.BodyParser(&request); err != nil {
 		response.ErrorLog = helper.WriteLog(err, 400, "parsing body request is failed")
 		return helper.Response(f, response)
 	}
