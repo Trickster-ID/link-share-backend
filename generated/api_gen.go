@@ -7,16 +7,39 @@ import (
 	"github.com/gofiber/fiber/v2"
 )
 
-// Pong defines model for Pong.
-type Pong struct {
-	Ping string `json:"ping"`
+// BaseResponse defines model for BaseResponse.
+type BaseResponse struct {
+	// Data Dynamic payload
+	Data          interface{} `json:"data"`
+	Error         *ErrorLog   `json:"error,omitempty"`
+	StatusMessage string      `json:"status_message"`
+	TotalData     int         `json:"total_data"`
+	Url           string      `json:"url"`
+}
+
+// ErrorLog defines model for ErrorLog.
+type ErrorLog struct {
+	// Filename Filename where the error occurred
+	Filename string `json:"filename"`
+
+	// Function Function name where the error occurred
+	Function string `json:"function"`
+
+	// Line Line where the error occurred
+	Line string `json:"line"`
+
+	// Message User-facing error message
+	Message string `json:"message"`
+
+	// SystemMessage Internal or system-level error details
+	SystemMessage string `json:"system_message"`
 }
 
 // ServerInterface represents all server handlers.
 type ServerInterface interface {
-
+	// Health check
 	// (GET /ping)
-	GetPing(c *fiber.Ctx) error
+	Ping(c *fiber.Ctx) error
 }
 
 // ServerInterfaceWrapper converts contexts to parameters.
@@ -26,10 +49,10 @@ type ServerInterfaceWrapper struct {
 
 type MiddlewareFunc fiber.Handler
 
-// GetPing operation middleware
-func (siw *ServerInterfaceWrapper) GetPing(c *fiber.Ctx) error {
+// Ping operation middleware
+func (siw *ServerInterfaceWrapper) Ping(c *fiber.Ctx) error {
 
-	return siw.Handler.GetPing(c)
+	return siw.Handler.Ping(c)
 }
 
 // FiberServerOptions provides options for the Fiber server.
@@ -53,6 +76,6 @@ func RegisterHandlersWithOptions(router fiber.Router, si ServerInterface, option
 		router.Use(fiber.Handler(m))
 	}
 
-	router.Get(options.BaseURL+"/ping", wrapper.GetPing)
+	router.Get(options.BaseURL+"/ping", wrapper.Ping)
 
 }

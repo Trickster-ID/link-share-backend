@@ -3,7 +3,6 @@ init: clean generate
 	go mod vendor
 
 clean:
-	rm -rf vendor
 	rm -rf generated
 	rm -f ./app/cmd/wire_gen.go
 

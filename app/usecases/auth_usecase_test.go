@@ -122,7 +122,7 @@ func TestLogin(t *testing.T) {
 		assert.Nil(t, response)
 		assert.Equal(t, errors.New("username or email or password is not valid"), errLog.Err)
 		assert.Equal(t, http.StatusUnauthorized, errLog.StatusCode)
-		assert.Equal(t, "", errLog.Message.(string))
+		assert.Equal(t, "", errLog.Message)
 	})
 	t.Run("-: wrong username", func(t *testing.T) {
 		errorLogExpected := helper.WriteLogWoP(pgx.ErrNoRows, 404, "please enter valid username or email or password")
@@ -137,7 +137,7 @@ func TestLogin(t *testing.T) {
 		assert.Nil(t, response)
 		assert.Equal(t, pgx.ErrNoRows, errLog.Err)
 		assert.Equal(t, http.StatusNotFound, errLog.StatusCode)
-		assert.Equal(t, "please enter valid username or email or password", errLog.Message.(string))
+		assert.Equal(t, "please enter valid username or email or password", errLog.Message)
 	})
 	assert.True(t, mockAuthRepo.AssertExpectations(t))
 	assert.True(t, mockAccessRepo.AssertExpectations(t))

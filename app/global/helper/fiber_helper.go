@@ -13,32 +13,37 @@ func Response(ctx *fiber.Ctx, response *model.BaseResponse, statusCodes ...int) 
 		statusCode = statusCodes[0]
 	}
 
+	// nil response case
 	if response == nil {
 		return ctx.Status(statusCode).JSON(nil)
 	}
 
-	if response.ErrorLog != nil {
+	// error case
+	if err := response.ErrorLog; err != nil {
+		response.StatusMessage = "error"
 		response.TotalData = 0
 		response.Data = nil
-		response.StatusMessage = "error"
-		return ctx.Status(response.ErrorLog.StatusCode).JSON(response)
+		return ctx.Status(err.StatusCode).JSON(response)
 	}
 
-	if response.TotalData == 0 {
-		totalData := int64(0)
-		if response.Data != nil {
-			v := reflect.ValueOf(response.Data)
-			t := v.Type()
-
-			// Check if the input is a slice or array
-			if t.Kind() == reflect.Slice || t.Kind() == reflect.Array {
-				totalData = int64(v.Len())
-			} else {
-				totalData = 1
+	// only reflect if Data is not nil and TotalData is 0
+	if response.TotalData == 0 && response.Data != nil {
+		switch v := response.Data.(type) {
+		case []any:
+			response.TotalData = int64(len(v))
+		case []string:
+			response.TotalData = int64(len(v))
+		case []int:
+			response.TotalData = int64(len(v))
+		default:
+			// fallback to reflection only if not basic slice
+			val := reflect.ValueOf(response.Data)
+			if val.Kind() == reflect.Slice || val.Kind() == reflect.Array {
+				response.TotalData = int64(val.Len())
 			}
 		}
-		response.TotalData = totalData
 	}
+
 	response.StatusMessage = "success"
 	return ctx.Status(statusCode).JSON(response)
 }

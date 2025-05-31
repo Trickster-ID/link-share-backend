@@ -19,13 +19,10 @@ paths:
           content:
             application/json:
               schema:
-                allOf:
-                  - $ref: "#/components/schemas/BaseResponse"
-                  - type: object
-                    properties:
-                      data:
-                        type: string
-                        example: pong
+                $ref: "#/components/schemas/BaseResponse"
+              example:
+                status_message: success
+                data: pong
 components:
   schemas:
     BaseResponse:
@@ -35,7 +32,8 @@ components:
           type: string
           example: success
         data:
-          type: object
+          description: Dynamic payload
+          x-go-type: interface{}
         total_data:
           type: integer
         url:
@@ -44,19 +42,18 @@ components:
           $ref: "#/components/schemas/ErrorLog"
       required:
         - status_message
+        - data
+        - total_data
+        - url
     ErrorLog:
       type: object
       properties:
         message:
           description: User-facing error message
-          oneOf:
-            - type: string
-            - type: object
+          type: string
         system_message:
           description: Internal or system-level error details
-          oneOf:
-            - type: string
-            - type: object
+          type: string
         line:
           type: string
           description: Line where the error occurred
@@ -66,3 +63,9 @@ components:
         function:
           type: string
           description: Function name where the error occurred
+      required:
+        - message
+        - system_message
+        - line
+        - filename
+        - function

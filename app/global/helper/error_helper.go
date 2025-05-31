@@ -15,13 +15,13 @@ var DefaultStatusText = map[int]string{
 	http.StatusBadRequest:          "Ada kesalahan pada request data, silahkan dicek kembali",
 }
 
-func WriteLog(err error, errorCode int, message interface{}) *model.ErrorLog {
+func WriteLog(err error, errorCode int, message string) *model.ErrorLog {
 	return writeLogRaw(err, errorCode, message, true)
 }
-func WriteLogWoP(err error, errorCode int, message interface{}) *model.ErrorLog {
+func WriteLogWoP(err error, errorCode int, message string) *model.ErrorLog {
 	return writeLogRaw(err, errorCode, message, false)
 }
-func writeLogRaw(err error, errorCode int, message interface{}, isPrint bool) *model.ErrorLog {
+func writeLogRaw(err error, errorCode int, message string, isPrint bool) *model.ErrorLog {
 	if pc, file, line, ok := runtime.Caller(2); ok {
 		file = file[strings.LastIndex(file, "/")+1:]
 		funcName := runtime.FuncForPC(pc).Name()
@@ -39,14 +39,7 @@ func writeLogRaw(err error, errorCode int, message interface{}, isPrint bool) *m
 		}
 
 		output.SystemMessage = err.Error()
-		if message == nil {
-			output.Message = DefaultStatusText[errorCode]
-			if output.Message == "" {
-				output.Message = http.StatusText(errorCode)
-			}
-		} else {
-			output.Message = message
-		}
+		output.Message = message
 		if errorCode == http.StatusInternalServerError {
 			output.Line = fmt.Sprintf("%d", line)
 			output.Filename = file
