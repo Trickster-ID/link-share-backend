@@ -23,22 +23,18 @@ func WriteLogWoP(err error, errorCode int, message string) *model.ErrorLog {
 }
 func writeLogRaw(err error, errorCode int, message string, isPrint bool) *model.ErrorLog {
 	if pc, file, line, ok := runtime.Caller(2); ok {
+		var errString string
+		if err != nil {
+			errString = err.Error()
+		}
 		file = file[strings.LastIndex(file, "/")+1:]
 		funcName := runtime.FuncForPC(pc).Name()
 		output := &model.ErrorLog{
 			StatusCode: errorCode,
 			Err:        err,
 		}
-		outputForPrint := &model.ErrorLog{
-			StatusCode:    errorCode,
-			Err:           err,
-			Line:          fmt.Sprintf("%d", line),
-			Filename:      file,
-			Function:      funcName,
-			SystemMessage: err.Error(),
-		}
 
-		output.SystemMessage = err.Error()
+		output.SystemMessage = errString
 		output.Message = message
 		if errorCode == http.StatusInternalServerError {
 			output.Line = fmt.Sprintf("%d", line)
@@ -47,6 +43,14 @@ func writeLogRaw(err error, errorCode int, message string, isPrint bool) *model.
 		}
 
 		if isPrint {
+			outputForPrint := &model.ErrorLog{
+				StatusCode:    errorCode,
+				Err:           err,
+				Line:          fmt.Sprintf("%d", line),
+				Filename:      file,
+				Function:      funcName,
+				SystemMessage: errString,
+			}
 			logForPrint := map[string]interface{}{}
 			_ = DecodeMapType(outputForPrint, &logForPrint)
 			logrus.SetReportCaller(false)

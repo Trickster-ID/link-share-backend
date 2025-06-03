@@ -151,6 +151,7 @@ func TestValidateUser(t *testing.T) {
 	mockRefreshRepo := mocksMongo.NewMockIRefreshTokenSessionsRepository(t)
 	mockJwtSecurity := mockSecurity.NewMockIJwtSecurity(t)
 	useCase := NewAuthUseCase(mockAuthRepo, mockAccessRepo, mockRefreshRepo, mockJwtSecurity)
+	ctx := context.Background()
 
 	t.Run("+: admin", func(t *testing.T) {
 		returnValue := &models.Users{
@@ -168,7 +169,7 @@ func TestValidateUser(t *testing.T) {
 			Email:    "",
 			Password: "admin",
 		}
-		response, errLog := useCase.ValidateUser(request, context.Background())
+		response, errLog := useCase.validateUser(ctx, request)
 		assert.Nil(t, errLog)
 		assert.NotNil(t, response)
 		assert.Equal(t, returnValue, response)
@@ -181,7 +182,7 @@ func TestValidateUser(t *testing.T) {
 			Email:    "",
 			Password: "userNotExist",
 		}
-		response, errLog := useCase.ValidateUser(request, context.Background())
+		response, errLog := useCase.validateUser(ctx, request)
 
 		expectedError := helper.WriteLogWoP(pgx.ErrNoRows, 404, "please enter valid username")
 		assert.Nil(t, response)

@@ -2,14 +2,17 @@ init: clean generate
 	go mod tidy
 	go mod vendor
 
+compile-api:
+	go tool oapi-codegen -config ./misc/cfg.yaml ./misc/api.yaml
+
 clean:
 	rm -rf generated
 	rm -f ./app/cmd/wire_gen.go
 
 generate:
-	mkdir generated || true
+	mkdir -p generated
 	wire ./app/cmd/wire.go
-	go tool oapi-codegen -config ./misc/cfg.yaml ./misc/api.yaml
+	$(MAKE) compile-api
 
 up:
 	docker-compose up -d

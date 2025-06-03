@@ -1,13 +1,11 @@
 openapi: "3.0.0"
 info:
-  title: Ping API
+  title: Link Share
   version: 1.0.0
   license:
     name: MIT
 servers:
-  - url: http://localhost:80
-  - url: http://localhost:81
-
+  - url: http://127.0.0.1:3000
 paths:
   /ping:
     get:
@@ -23,6 +21,25 @@ paths:
               example:
                 status_message: success
                 data: pong
+  /register:
+    post:
+      summary: Register new User
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RegisterRequest"
+      responses:
+        '201':
+          description: Success response
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BaseResponse"
+              example:
+                status_message: success
+
 components:
   schemas:
     BaseResponse:
@@ -69,3 +86,17 @@ components:
         - line
         - filename
         - function
+    RegisterRequest:
+      type: object
+      properties:
+        username:
+          type: string
+        email:
+          type: string
+          format: email
+        password:
+          type: string
+      required:
+        - username
+        - email
+        - password
