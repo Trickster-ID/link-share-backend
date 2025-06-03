@@ -6,7 +6,6 @@ import (
 	"github.com/gofiber/fiber/v2"
 	"github.com/sirupsen/logrus"
 	"linkshare/app/configuration"
-	"linkshare/app/controllers"
 	"linkshare/app/global/db"
 	"linkshare/generated"
 	"log"
@@ -31,8 +30,7 @@ func main() {
 	case "main":
 		app := fiber.New()
 		configuration.FiberInitLogger(app)
-		newServer := controllers.NewServer()
-		_ = InitializeFiberServer(postgresParam, mongoParam, redisParam)
+		newServer := InitializeFiberServer(postgresParam, mongoParam, redisParam)
 		generated.RegisterHandlers(app, newServer)
 		startHttpServer(app)
 	default:

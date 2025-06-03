@@ -7,41 +7,38 @@
 package main
 
 import (
-	"github.com/gofiber/fiber/v2"
 	"github.com/google/wire"
 	"linkshare/app/controllers"
 	"linkshare/app/global/db"
+	"linkshare/app/repositories"
 	"linkshare/app/repositories/mongo_repo"
 	"linkshare/app/repositories/sql_repo"
-	"linkshare/app/routes"
 	"linkshare/app/security"
 	"linkshare/app/usecases"
 )
 
 // Injectors from wire.go:
 
-func InitializeFiberServer(postgresParam db.PostgresParam, mongoParam db.MongoParam, redisParam db.RedisParam) *fiber.App {
+func InitializeFiberServer(postgresParam db.PostgresParam, mongoParam db.MongoParam, redisParam db.RedisParam) *controllers.Server {
 	pgxIface := db.NewPostgresClient(postgresParam)
+	iRedis := db.NewRedisClient(redisParam)
+	iGeneralRepository := repositories.NewGeneralRepository(pgxIface, iRedis)
 	iAuthRepository := sql_repo.NewAuthRepository(pgxIface)
 	client := db.NewMongoClient(mongoParam)
-	redisClient := db.NewRedisClient(redisParam)
-	iAccessTokenSessionsRepository := mongo_repo.NewAccessTokenSessionRepository(client, redisClient)
-	iRefreshTokenSessionsRepository := mongo_repo.NewRefreshTokenSessionRepository(client, redisClient)
+	iAccessTokenSessionsRepository := mongo_repo.NewAccessTokenSessionRepository(client)
+	iRefreshTokenSessionsRepository := mongo_repo.NewRefreshTokenSessionRepository(client)
 	iJwtSecurity := security.NewJwtSecurity()
-	iAuthUseCase := usecases.NewAuthUseCase(iAuthRepository, iAccessTokenSessionsRepository, iRefreshTokenSessionsRepository, iJwtSecurity)
-	iAuthController := controllers.NewAuthController(iAuthUseCase)
-	app := routes.NewRouter(iAuthController)
-	return app
+	iAuthUseCase := usecases.NewAuthUseCase(iGeneralRepository, iAuthRepository, iAccessTokenSessionsRepository, iRefreshTokenSessionsRepository, iJwtSecurity)
+	server := controllers.NewServer(iAuthUseCase)
+	return server
 }
 
 // wire.go:
 
 var connectionSet = wire.NewSet(db.NewPostgresClient, db.NewMongoClient, db.NewRedisClient)
 
-var controllerSet = wire.NewSet(controllers.NewAuthController)
-
 var useCaseSet = wire.NewSet(usecases.NewAuthUseCase)
 
-var repositorySet = wire.NewSet(sql_repo.NewAuthRepository, mongo_repo.NewAccessTokenSessionRepository, mongo_repo.NewRefreshTokenSessionRepository)
+var repositorySet = wire.NewSet(repositories.NewGeneralRepository, sql_repo.NewAuthRepository, mongo_repo.NewAccessTokenSessionRepository, mongo_repo.NewRefreshTokenSessionRepository)
 
 var securitySet = wire.NewSet(security.NewJwtSecurity)

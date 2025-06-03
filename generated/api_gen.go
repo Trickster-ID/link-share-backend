@@ -5,6 +5,7 @@ package generated
 
 import (
 	"github.com/gofiber/fiber/v2"
+	openapi_types "github.com/oapi-codegen/runtime/types"
 )
 
 // BaseResponse defines model for BaseResponse.
@@ -35,11 +36,24 @@ type ErrorLog struct {
 	SystemMessage string `json:"system_message"`
 }
 
+// RegisterRequest defines model for RegisterRequest.
+type RegisterRequest struct {
+	Email    openapi_types.Email `json:"email"`
+	Password string              `json:"password"`
+	Username string              `json:"username"`
+}
+
+// PostRegisterJSONRequestBody defines body for PostRegister for application/json ContentType.
+type PostRegisterJSONRequestBody = RegisterRequest
+
 // ServerInterface represents all server handlers.
 type ServerInterface interface {
 	// Health check
 	// (GET /ping)
 	Ping(c *fiber.Ctx) error
+	// Register new User
+	// (POST /register)
+	PostRegister(c *fiber.Ctx) error
 }
 
 // ServerInterfaceWrapper converts contexts to parameters.
@@ -53,6 +67,12 @@ type MiddlewareFunc fiber.Handler
 func (siw *ServerInterfaceWrapper) Ping(c *fiber.Ctx) error {
 
 	return siw.Handler.Ping(c)
+}
+
+// PostRegister operation middleware
+func (siw *ServerInterfaceWrapper) PostRegister(c *fiber.Ctx) error {
+
+	return siw.Handler.PostRegister(c)
 }
 
 // FiberServerOptions provides options for the Fiber server.
@@ -77,5 +97,7 @@ func RegisterHandlersWithOptions(router fiber.Router, si ServerInterface, option
 	}
 
 	router.Get(options.BaseURL+"/ping", wrapper.Ping)
+
+	router.Post(options.BaseURL+"/register", wrapper.PostRegister)
 
 }
