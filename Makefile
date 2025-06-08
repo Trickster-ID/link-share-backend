@@ -1,6 +1,6 @@
 init: clean generate
 	go mod tidy
-	go mod vendor
+	#go mod vendor
 
 compile-api:
 	go tool oapi-codegen -config ./misc/cfg.yaml ./misc/api.yaml
