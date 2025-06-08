@@ -36,6 +36,13 @@ type ErrorLog struct {
 	SystemMessage string `json:"system_message"`
 }
 
+// LoginRequest defines model for LoginRequest.
+type LoginRequest struct {
+	Email    *openapi_types.Email `json:"email,omitempty"`
+	Password string               `json:"password"`
+	Username *string              `json:"username,omitempty"`
+}
+
 // RegisterRequest defines model for RegisterRequest.
 type RegisterRequest struct {
 	Email    openapi_types.Email `json:"email"`
@@ -43,17 +50,35 @@ type RegisterRequest struct {
 	Username string              `json:"username"`
 }
 
-// PostRegisterJSONRequestBody defines body for PostRegister for application/json ContentType.
-type PostRegisterJSONRequestBody = RegisterRequest
+// ErrorBadRequest defines model for ErrorBadRequest.
+type ErrorBadRequest = BaseResponse
+
+// ErrorInternalServerError defines model for ErrorInternalServerError.
+type ErrorInternalServerError = BaseResponse
+
+// ErrorNotFound defines model for ErrorNotFound.
+type ErrorNotFound = BaseResponse
+
+// LoginJSONRequestBody defines body for Login for application/json ContentType.
+type LoginJSONRequestBody = LoginRequest
+
+// PostAuthRegisterJSONRequestBody defines body for PostAuthRegister for application/json ContentType.
+type PostAuthRegisterJSONRequestBody = RegisterRequest
 
 // ServerInterface represents all server handlers.
 type ServerInterface interface {
+	// User Login
+	// (POST /auth/login)
+	Login(c *fiber.Ctx) error
+	// Refresh Access Token
+	// (POST /auth/refresh-token)
+	RefreshToken(c *fiber.Ctx) error
+	// Register new User
+	// (POST /auth/register)
+	PostAuthRegister(c *fiber.Ctx) error
 	// Health check
 	// (GET /ping)
 	Ping(c *fiber.Ctx) error
-	// Register new User
-	// (POST /register)
-	PostRegister(c *fiber.Ctx) error
 }
 
 // ServerInterfaceWrapper converts contexts to parameters.
@@ -63,16 +88,28 @@ type ServerInterfaceWrapper struct {
 
 type MiddlewareFunc fiber.Handler
 
+// Login operation middleware
+func (siw *ServerInterfaceWrapper) Login(c *fiber.Ctx) error {
+
+	return siw.Handler.Login(c)
+}
+
+// RefreshToken operation middleware
+func (siw *ServerInterfaceWrapper) RefreshToken(c *fiber.Ctx) error {
+
+	return siw.Handler.RefreshToken(c)
+}
+
+// PostAuthRegister operation middleware
+func (siw *ServerInterfaceWrapper) PostAuthRegister(c *fiber.Ctx) error {
+
+	return siw.Handler.PostAuthRegister(c)
+}
+
 // Ping operation middleware
 func (siw *ServerInterfaceWrapper) Ping(c *fiber.Ctx) error {
 
 	return siw.Handler.Ping(c)
-}
-
-// PostRegister operation middleware
-func (siw *ServerInterfaceWrapper) PostRegister(c *fiber.Ctx) error {
-
-	return siw.Handler.PostRegister(c)
 }
 
 // FiberServerOptions provides options for the Fiber server.
@@ -96,8 +133,12 @@ func RegisterHandlersWithOptions(router fiber.Router, si ServerInterface, option
 		router.Use(fiber.Handler(m))
 	}
 
-	router.Get(options.BaseURL+"/ping", wrapper.Ping)
+	router.Post(options.BaseURL+"/auth/login", wrapper.Login)
 
-	router.Post(options.BaseURL+"/register", wrapper.PostRegister)
+	router.Post(options.BaseURL+"/auth/refresh-token", wrapper.RefreshToken)
+
+	router.Post(options.BaseURL+"/auth/register", wrapper.PostAuthRegister)
+
+	router.Get(options.BaseURL+"/ping", wrapper.Ping)
 
 }

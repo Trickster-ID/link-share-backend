@@ -3,7 +3,6 @@ package repositories
 import (
 	"context"
 	"github.com/jackc/pgx/v5"
-	"github.com/sirupsen/logrus"
 	"linkshare/app/global/db"
 	"time"
 )
@@ -11,7 +10,8 @@ import (
 type IGeneralRepository interface {
 	BeginTransaction(ctx context.Context) pgx.Tx
 	SetRedisCache(ctx context.Context, key string, value interface{}, expiration time.Duration)
-	GetRedisCache(ctx context.Context, key string, destination interface{}) error
+	GetRedisCache(ctx context.Context, key string, destination interface{})
+	DelRedisCache(ctx context.Context, key string)
 }
 
 type generalRepository struct {
@@ -35,16 +35,25 @@ func (r *generalRepository) BeginTransaction(ctx context.Context) pgx.Tx {
 }
 
 func (r *generalRepository) SetRedisCache(ctx context.Context, key string, value interface{}, expiration time.Duration) {
-	err := r.redisDb.Set(ctx, key, value, expiration)
-	if err != nil {
-		logrus.Errorf("error while setting redis cache: %v", err)
-	}
+	_ = r.redisDb.Set(ctx, key, value, expiration)
 }
 
-func (r *generalRepository) GetRedisCache(ctx context.Context, key string, destination interface{}) error {
-	err := r.redisDb.Get(ctx, key, &destination)
+func (r *generalRepository) GetRedisCache(ctx context.Context, key string, destination interface{}) {
+	_ = r.redisDb.Get(ctx, key, &destination)
+}
+
+func (r *generalRepository) DelRedisCache(ctx context.Context, key string) {
+	err := r.redisDb.Del(ctx, key)
 	if err != nil {
-		logrus.Errorf("error while setting redis cache: %v", err)
+		// retry after second 2
+		go func() {
+			for i := 0; i < 5; i++ {
+				time.Sleep(2 * time.Second)
+				err := r.redisDb.Del(ctx, key)
+				if err == nil {
+					return
+				}
+			}
+		}()
 	}
-	return err
 }

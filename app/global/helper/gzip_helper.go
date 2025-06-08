@@ -3,6 +3,7 @@ package helper
 import (
 	"bytes"
 	"compress/gzip"
+	"github.com/sirupsen/logrus"
 	"io"
 )
 
@@ -25,6 +26,11 @@ func GzipDecompress(data []byte) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	defer gz.Close()
+	defer func(gz *gzip.Reader) {
+		err := gz.Close()
+		if err != nil {
+			logrus.Errorf("error while closing gzip reader: %v", err)
+		}
+	}(gz)
 	return io.ReadAll(gz)
 }

@@ -21,9 +21,16 @@ paths:
               example:
                 status_message: success
                 data: pong
-  /register:
+        '500':
+          $ref: "#/components/responses/ErrorInternalServerError"
+        '404':
+          $ref: "#/components/responses/ErrorNotFound"
+        '400':
+          $ref: "#/components/responses/ErrorBadRequest"
+  /auth/register:
     post:
       summary: Register new User
+      operationId: register
       requestBody:
         required: true
         content:
@@ -39,6 +46,68 @@ paths:
                 $ref: "#/components/schemas/BaseResponse"
               example:
                 status_message: success
+        '500':
+          $ref: "#/components/responses/ErrorInternalServerError"
+        '404':
+          $ref: "#/components/responses/ErrorNotFound"
+        '400':
+          $ref: "#/components/responses/ErrorBadRequest"
+  /auth/login:
+    post:
+      summary: User Login
+      description: Authenticates a user and returns access and refresh tokens
+      operationId: login
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LoginRequest"
+            example:
+              username: "user1"
+              email: "user1@mail.com"
+              password: "password1"
+      responses:
+        '200':
+          description: Successful login
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BaseResponse"
+              example:
+                status_message: success
+                data:
+                  access_token: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+                  refresh_token: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+        '500':
+          $ref: "#/components/responses/ErrorInternalServerError"
+        '404':
+          $ref: "#/components/responses/ErrorNotFound"
+        '400':
+          $ref: "#/components/responses/ErrorBadRequest"
+  /auth/refresh-token:
+    post:
+      summary: Refresh Access Token
+      description: Generates a new access token using a valid refresh token
+      operationId: refreshToken
+      responses:
+        '200':
+          description: Successful token refresh
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BaseResponse"
+              example:
+                status_message: success
+                data:
+                  access_token: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+                  refresh_token: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+        '500':
+          $ref: "#/components/responses/ErrorInternalServerError"
+        '404':
+          $ref: "#/components/responses/ErrorNotFound"
+        '400':
+          $ref: "#/components/responses/ErrorBadRequest"
 
 components:
   schemas:
@@ -100,3 +169,62 @@ components:
         - username
         - email
         - password
+    LoginRequest:
+      type: object
+      properties:
+        username:
+          type: string
+        email:
+          type: string
+          format: email
+        password:
+          type: string
+      required:
+        - password
+    AuthResponse:
+      type: object
+      properties:
+        access_token:
+          type: string
+        refresh_token:
+          type: string
+      required:
+        - access_token
+        - refresh_token
+  responses:
+    ErrorInternalServerError:
+      description: Internal server error
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/BaseResponse"
+          example:
+            status_message: error
+            error:
+              message: Internal server error
+              system_message: something went wrong, try again later
+              line: "123"
+              filename: "file.go"
+              function: "SomeFunction"
+    ErrorNotFound:
+      description: Error data not found
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/BaseResponse"
+          example:
+            status_message: error
+            error:
+              message: data with id 1 not found
+              system_message: data not found
+    ErrorBadRequest:
+      description: Error bad request
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/BaseResponse"
+          example:
+            status_message: error
+            error:
+              message: field cannot be empty
+              system_message: there something wrong with your request, please check your request

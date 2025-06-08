@@ -93,43 +93,50 @@ func (rdb *Redis) Client() *redis.Client {
 func (rdb *Redis) Set(ctx context.Context, key string, value interface{}, ttl time.Duration) error {
 	val, err := json.Marshal(value)
 	if err != nil {
-		logrus.Errorf("error while marshaling value: %v", err)
+		logrus.WithFields(logrus.Fields{
+			"marshal_data": fmt.Sprintf("%+v", value),
+			"call_from":    helper.GetCaller(2),
+		}).Errorf("error marshaling while set redis, err: %v ", err)
 		return err
 	}
-
 	compressedData, err := helper.GzipCompress(val)
 	if err != nil {
-		logrus.Errorf("error while compressing value: %v", err)
+		logrus.WithFields(logrus.Fields{
+			"marshal_data": fmt.Sprintf("%+v", value),
+			"call_from":    helper.GetCaller(2),
+		}).Errorf("error compressing while set redis: %v", err)
 		return err
 	}
-
-	err = rdb.redis.Set(ctx, key, string(compressedData), ttl).Err()
-	if err != nil {
-		return err
-	}
-
-	return err
+	return rdb.redis.Set(ctx, key, string(compressedData), ttl).Err()
 }
 
 func (rdb *Redis) Get(ctx context.Context, key string, dest interface{}) error {
 	val, err := rdb.redis.Get(ctx, key).Result()
 	if err != nil {
+		logrus.WithFields(logrus.Fields{
+			"redis_key": key,
+			"call_from": helper.GetCaller(2),
+		}).Tracef("error while get redis: %v", err)
 		return err
 	}
-
 	decompressData, err := helper.GzipDecompress([]byte(val))
 	if err != nil {
-		logrus.Errorf("error while decompressing value: %v", err)
+		logrus.WithFields(logrus.Fields{
+			"redis_key": key,
+			"call_from": helper.GetCaller(2),
+		}).Tracef("error decompressing while get redis: %v", err)
 		return err
 	}
 
 	err = json.Unmarshal(decompressData, &dest)
 	if err != nil {
-		logrus.Errorf("error while unmarshaling value: %v", err)
+		logrus.WithFields(logrus.Fields{
+			"redis_key": key,
+			"call_from": helper.GetCaller(2),
+		}).Tracef("error unmarshaling while get redis: %v", err)
 		return err
 	}
-
-	return err
+	return nil
 }
 
 func (rdb *Redis) LPush(ctx context.Context, key string, value interface{}) error {
@@ -142,8 +149,7 @@ func (rdb *Redis) LPush(ctx context.Context, key string, value interface{}) erro
 	if err != nil {
 		return err
 	}
-
-	return err
+	return nil
 }
 
 func (rdb *Redis) LPop(ctx context.Context, key string, dest interface{}) error {
@@ -156,8 +162,7 @@ func (rdb *Redis) LPop(ctx context.Context, key string, dest interface{}) error 
 	if err != nil {
 		return err
 	}
-
-	return err
+	return nil
 }
 
 func (rdb *Redis) RPush(ctx context.Context, key string, value interface{}) error {
@@ -170,8 +175,7 @@ func (rdb *Redis) RPush(ctx context.Context, key string, value interface{}) erro
 	if err != nil {
 		return err
 	}
-
-	return err
+	return nil
 }
 
 func (rdb *Redis) RPop(ctx context.Context, key string, dest interface{}) error {
@@ -184,8 +188,7 @@ func (rdb *Redis) RPop(ctx context.Context, key string, dest interface{}) error 
 	if err != nil {
 		return err
 	}
-
-	return err
+	return nil
 }
 
 func (rdb *Redis) Llen(ctx context.Context, key string) (int64, error) {
@@ -193,8 +196,7 @@ func (rdb *Redis) Llen(ctx context.Context, key string) (int64, error) {
 	if err != nil {
 		return 0, err
 	}
-
-	return llen, err
+	return llen, nil
 }
 
 func (rdb *Redis) LMove(ctx context.Context, source, dest, srcpos, destpos string) error {
@@ -202,8 +204,7 @@ func (rdb *Redis) LMove(ctx context.Context, source, dest, srcpos, destpos strin
 	if err != nil {
 		return err
 	}
-
-	return err
+	return nil
 }
 
 func (rdb *Redis) LTrim(ctx context.Context, key string, start, stop int64) error {
@@ -211,17 +212,19 @@ func (rdb *Redis) LTrim(ctx context.Context, key string, start, stop int64) erro
 	if err != nil {
 		return err
 	}
-
-	return err
+	return nil
 }
 
 func (rdb *Redis) Del(ctx context.Context, key string) error {
 	err := rdb.redis.Del(ctx, key).Err()
 	if err != nil {
+		logrus.WithFields(logrus.Fields{
+			"redis_key": key,
+			"call_from": helper.GetCaller(2),
+		}).Errorf("error while delete redis: %v", err)
 		return err
 	}
-
-	return err
+	return nil
 }
 
 func (rdb *Redis) Ping(ctx context.Context) error {
@@ -229,6 +232,5 @@ func (rdb *Redis) Ping(ctx context.Context) error {
 	if status.Err() != nil {
 		return status.Err()
 	}
-
 	return nil
 }

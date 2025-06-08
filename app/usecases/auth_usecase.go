@@ -4,9 +4,8 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/golang-jwt/jwt/v5"
+	"github.com/jackc/pgx/v5"
 	"golang.org/x/crypto/bcrypt"
-	"linkshare/app/constants"
 	"linkshare/app/dto"
 	"linkshare/app/global/helper"
 	"linkshare/app/global/model"
@@ -17,6 +16,7 @@ import (
 	"linkshare/app/security"
 	"linkshare/generated"
 	"net/http"
+	"sync"
 	"time"
 )
 
@@ -76,11 +76,13 @@ func (u *authUseCase) Login(ctx context.Context, req *dto.LoginRequest) (*dto.Lo
 	response := &dto.LoginResponse{}
 	user, errLog := u.validateUser(ctx, req)
 	if errLog != nil {
+		if errors.Is(errLog.Err, pgx.ErrNoRows) {
+			return nil, helper.WriteLog(errors.New("username or email or password is not valid"), http.StatusUnauthorized, "")
+		}
 		return nil, errLog
 	}
 	if user == nil {
-		errLog = helper.WriteLog(errors.New("username or email or password is not valid"), http.StatusUnauthorized, "")
-		return nil, errLog
+		return nil, helper.WriteLog(errors.New("username or email or password is not valid"), http.StatusUnauthorized, "")
 	}
 	userRequest := &models.UserDataOnJWT{
 		Id:       user.Id,
@@ -101,7 +103,7 @@ func (u *authUseCase) Login(ctx context.Context, req *dto.LoginRequest) (*dto.Lo
 	}
 	go u.accessRepository.Insert(requestAccessToken, ctx)
 
-	redisKeyForAccessToken := fmt.Sprintf("%s:%s", constants.ACCESS_TOKEN_SESSIONS_COL, requestAccessToken.AccessToken)
+	redisKeyForAccessToken := helper.GenRedisKeyAccessTokenSessionByUserID(user.Id)
 	u.generalRepository.SetRedisCache(ctx, redisKeyForAccessToken, requestAccessToken, requestAccessToken.Expired.Sub(time.Now()))
 
 	// insert refresh token to database
@@ -117,7 +119,7 @@ func (u *authUseCase) Login(ctx context.Context, req *dto.LoginRequest) (*dto.Lo
 	response.RefreshToken = tokenResult.RefreshToken
 
 	// set redis cache for refresh token
-	redisKeyForRefreshToken := fmt.Sprintf("%s:%s", constants.REFRESH_TOKEN_SESSIONS_COL, requestRefreshToken.RefreshToken)
+	redisKeyForRefreshToken := helper.GenRedisKeyRefreshTokenSessionByUserID(user.Id)
 	u.generalRepository.SetRedisCache(ctx, redisKeyForRefreshToken, requestRefreshToken, requestRefreshToken.Expired.Sub(time.Now()))
 
 	return response, nil
@@ -142,45 +144,69 @@ func (u *authUseCase) RefreshToken(ctx context.Context, req *dto.RefreshTokenReq
 	response := &dto.LoginResponse{
 		RefreshToken: req.RefreshToken,
 	}
-	responseChan := make(chan *dto.GetByRefreshTokenChan)
-	go func(responseChan chan *dto.GetByRefreshTokenChan) {
-		res := &dto.GetByRefreshTokenChan{}
-		redisKey := fmt.Sprintf("%s:%s", constants.REFRESH_TOKEN_SESSIONS_COL, req.RefreshToken)
-		err := u.generalRepository.GetRedisCache(ctx, redisKey, &res.Data)
-		if err != nil {
-			res.Data, res.ErrLog = u.refreshRepository.GetByRefreshToken(req.RefreshToken, ctx)
-		}
-		if res.Data.Expired.Before(time.Now()) {
-			res.ErrLog = helper.WriteLog(errors.New("unauthorized"), http.StatusUnauthorized, "refresh token expired")
-		}
-		responseChan <- res
-	}(responseChan)
 
-	resultValidate := u.jwtSecurity.ValidateRefreshToken(req.RefreshToken)
-	if resultValidate.Error != nil {
-		if errors.Is(resultValidate.Error, jwt.ErrTokenExpired) {
-			errLog := helper.WriteLog(errors.New("unauthorized"), http.StatusUnauthorized, resultValidate.Error.Error())
-			return nil, errLog
+	userData, err := helper.GetUserDataOnCtx(ctx)
+	if err != nil {
+		return nil, helper.WriteLog(err, http.StatusInternalServerError, "error while get user data on context")
+	}
+
+	res := &dto.GetByRefreshTokenChan{}
+	redisKey := helper.GenRedisKeyRefreshTokenSessionByUserID(userData.Id)
+	u.generalRepository.GetRedisCache(ctx, redisKey, &res.Data)
+	if res.Data == nil {
+		res.Data, res.ErrLog = u.refreshRepository.GetByRefreshToken(req.RefreshToken, ctx)
+		if res.ErrLog != nil {
+			if res.ErrLog.StatusCode == http.StatusNotFound {
+				res.ErrLog.Err = errors.New("unauthorized")
+				res.ErrLog.Message = "refresh token expired"
+				res.ErrLog.SystemMessage = ""
+			}
+			return nil, res.ErrLog
 		}
-		errLog := helper.WriteLog(errors.New("unauthorized"), http.StatusUnauthorized, "invalid refresh token")
-		return nil, errLog
 	}
-	responseGetSession := <-responseChan
-	if responseGetSession.ErrLog != nil {
-		return nil, responseGetSession.ErrLog
+	if res.Data.Expired.Before(time.Now()) {
+		return nil, helper.WriteLog(errors.New("unauthorized"), http.StatusUnauthorized, "refresh token expired")
 	}
-	token, err := u.jwtSecurity.GenerateAccessToken(responseGetSession.Data.UserData)
+
+	token, err := u.jwtSecurity.GenerateAccessToken(userData)
 	if err != nil {
 		errLog := helper.WriteLog(err, http.StatusInternalServerError, "error generating access token")
 		return nil, errLog
 	}
 	response.AccessToken = token.AccessToken
-
-	requestRefreshToken := &models.AccessTokenSession{
+	requestAccessToken := &models.AccessTokenSession{
 		AccessToken: token.AccessToken,
 		Expired:     token.AccessTokenExpired,
-		UserData:    responseGetSession.Data.UserData,
+		UserData:    userData,
 	}
-	go u.accessRepository.Insert(requestRefreshToken, ctx)
+	u.clearAndInsertAccessToken(ctx, userData.Id, requestAccessToken)
 	return response, nil
+}
+
+func (u *authUseCase) clearAndInsertAccessToken(ctx context.Context, userId int64, dataAccess *models.AccessTokenSession) {
+	wg := &sync.WaitGroup{}
+	// delete access session on redis and mongo
+	wg.Add(2)
+	go func() {
+		defer wg.Done()
+		u.generalRepository.DelRedisCache(ctx, helper.GenRedisKeyAccessTokenSessionByUserID(userId))
+	}()
+	go func() {
+		defer wg.Done()
+		u.accessRepository.DeleteByUserId(ctx, userId)
+	}()
+	wg.Wait()
+
+	// set access session on redis and mongo
+	wg.Add(2)
+	go func() {
+		defer wg.Done()
+		redisKeyForAccessToken := helper.GenRedisKeyAccessTokenSessionByUserID(userId)
+		u.generalRepository.SetRedisCache(ctx, redisKeyForAccessToken, dataAccess, dataAccess.Expired.Sub(time.Now()))
+	}()
+	go func() {
+		defer wg.Done()
+		u.accessRepository.Insert(dataAccess, ctx)
+	}()
+	wg.Wait()
 }

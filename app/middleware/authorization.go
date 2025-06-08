@@ -2,11 +2,11 @@ package middleware
 
 import (
 	"encoding/base64"
-	"encoding/json"
 	"errors"
 	"github.com/gofiber/fiber/v2"
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/sirupsen/logrus"
+	"linkshare/app/dto"
 	"linkshare/app/global/helper"
 	"linkshare/app/global/model"
 	"linkshare/app/security"
@@ -15,33 +15,43 @@ import (
 	"strings"
 )
 
-func TokenMiddleware() fiber.Handler {
+func AccessTokenMiddleware() fiber.Handler {
+	return validateToken(true)
+}
+func RefreshTokenMiddleware() fiber.Handler {
+	return validateToken(false)
+}
+
+func validateToken(isAccessToken bool) fiber.Handler {
 	return func(f *fiber.Ctx) error {
-		authHeader := f.Get("Authorization")
+		authHeader := f.Get(fiber.HeaderAuthorization)
 		errLog := helper.WriteLogWoP(errors.New("unauthorized"), http.StatusUnauthorized, "Invalid token")
 		if authHeader == "" {
 			logrus.Trace("auth header is empty")
-			return helper.Response(f, &model.BaseResponse{ErrorLog: errLog})
+			return helper.Response(f, &model.BaseResponse{ErrorLog: errLog}, http.StatusUnauthorized)
 		}
 
 		// Check if the token is in the format "Bearer <token>"
-		tokenString := strings.TrimSpace(strings.Replace(authHeader, "Bearer", "", 1))
+		tokenString := strings.TrimSpace(strings.TrimPrefix(authHeader, "Bearer "))
 		jwtSecurity := security.NewJwtSecurity()
-		response := jwtSecurity.ValidateAccessToken(tokenString)
+		var response *dto.ValidateTokenResponse
+		if isAccessToken {
+			response = jwtSecurity.ValidateAccessToken(tokenString)
+		} else {
+			response = jwtSecurity.ValidateRefreshToken(tokenString)
+		}
 		if response.Error != nil {
 			if errors.Is(response.Error, jwt.ErrTokenExpired) {
 				errLog := helper.WriteLog(errors.New("unauthorized"), http.StatusUnauthorized, response.Error.Error())
-				return helper.Response(f, &model.BaseResponse{ErrorLog: errLog})
+				return helper.Response(f, &model.BaseResponse{ErrorLog: errLog}, http.StatusUnauthorized)
 			}
 			logrus.Trace(response.Error)
-			return helper.Response(f, &model.BaseResponse{ErrorLog: errLog})
+			return helper.Response(f, &model.BaseResponse{ErrorLog: errLog}, http.StatusUnauthorized)
 		}
-		marshalledData, err := json.Marshal(response.User)
+		err := helper.SetUserDataOnCtx(f, response.User)
 		if err != nil {
-			logrus.Trace(err)
-			return helper.Response(f, &model.BaseResponse{ErrorLog: errLog})
+			return helper.Response(f, &model.BaseResponse{ErrorLog: errLog}, http.StatusUnauthorized)
 		}
-		f.Set("user_data", string(marshalledData))
 		return f.Next()
 	}
 }
