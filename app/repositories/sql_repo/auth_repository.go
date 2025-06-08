@@ -40,7 +40,8 @@ func (r *authRepository) Create(sqlTx pgx.Tx, request *generated.RegisterRequest
 		var asdf *pgconn.PgError
 		if errors.As(err, &asdf) {
 			if asdf.Code == "23505" {
-				return helper.WriteLog(nil, http.StatusBadRequest, "username or email already taken")
+				newErr := errors.New("username or email already taken")
+				return helper.WriteLog(newErr, http.StatusBadRequest, "username or email already taken")
 			}
 		}
 		return helper.WriteLog(err, http.StatusInternalServerError, "error while creating user")

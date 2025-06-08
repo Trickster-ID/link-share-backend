@@ -7,6 +7,7 @@ import (
 	"github.com/sirupsen/logrus"
 	"linkshare/app/configuration"
 	"linkshare/app/global/db"
+	"linkshare/app/middleware"
 	"linkshare/generated"
 	"log"
 	"os"
@@ -30,8 +31,11 @@ func main() {
 	case "main":
 		app := fiber.New()
 		configuration.FiberInitLogger(app)
+		// Add RefreshTokenMiddleware to the /auth/refresh-token endpoint
+		app.Use("/auth/refresh-token", middleware.RefreshTokenMiddleware())
 		newServer := InitializeFiberServer(postgresParam, mongoParam, redisParam)
 		generated.RegisterHandlers(app, newServer)
+
 		startHttpServer(app)
 	default:
 		logrus.Fatal("invalid command")

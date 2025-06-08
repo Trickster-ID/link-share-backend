@@ -104,22 +104,26 @@ func (s *JwtSecurity) validateToken(tokenString, secretKey string) *dto.Validate
 		func(token *jwt.Token) (interface{}, error) {
 			// Make sure the signing method is ECDSA (ES256)
 			if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
+				logrus.Trace("not valid signing method")
 				return nil, fmt.Errorf("unexpected signing method: %v", token.Header["alg"])
 			}
 			return []byte(secretKey), nil
 		},
 	)
 	if err != nil || !token.Valid {
+		logrus.Trace(err)
 		response.Error = errors.New("invalid token")
 		return response
 	}
 	expTime, err := token.Claims.GetExpirationTime()
 	if err != nil {
 		response.Error = err
+		logrus.Trace(response.Error.Error())
 		return response
 	}
 	if expTime.Before(time.Now()) {
 		response.Error = jwt.ErrTokenExpired
+		logrus.Trace(response.Error.Error())
 		return response
 	}
 	userData := &models.UserDataOnJWT{

@@ -24,6 +24,8 @@ services:
       REDIS_PASSWORD: AznRnqks3S1Ne5ZKZBrnLhFVLoqQMCOG
     ports:
       - "6379:6379"
+    volumes:
+      - redis_data:/data
     healthcheck:
       test: ["CMD", "redis-cli", "-a", "AznRnqks3S1Ne5ZKZBrnLhFVLoqQMCOG", "ping"]
       interval: 2s
@@ -46,3 +48,6 @@ services:
       interval: 2s
       timeout: 5s
       retries: 10
+
+volumes:
+  redis_data:

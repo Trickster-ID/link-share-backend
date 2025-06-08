@@ -10,9 +10,9 @@ import (
 )
 
 var DefaultStatusText = map[int]string{
-	http.StatusInternalServerError: "Terjadi Kesalahan, Silahkan Coba lagi Nanti",
-	http.StatusNotFound:            "Data tidak Ditemukan",
-	http.StatusBadRequest:          "Ada kesalahan pada request data, silahkan dicek kembali",
+	http.StatusInternalServerError: "something went wrong, try again later",
+	http.StatusNotFound:            "data not found",
+	http.StatusBadRequest:          "there something wrong with your request, please check your request",
 }
 
 func WriteLog(err error, errorCode int, message string) *model.ErrorLog {
@@ -40,6 +40,9 @@ func writeLogRaw(err error, errorCode int, message string, isPrint bool) *model.
 			output.Line = fmt.Sprintf("%d", line)
 			output.Filename = file
 			output.Function = funcName
+			output.Message = fmt.Sprintf("%s", DefaultStatusText[errorCode])
+		} else if errorCode == http.StatusNotFound || errorCode == http.StatusBadRequest {
+			output.Message = fmt.Sprintf("%s", DefaultStatusText[errorCode])
 		}
 
 		if isPrint {

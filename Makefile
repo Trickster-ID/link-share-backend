@@ -17,6 +17,9 @@ generate:
 up:
 	docker-compose up -d
 
+down:
+	docker-compose down --volumes
+
 wait:
 	@echo "⏳ Waiting for services to be healthy..."
 	@for service in postgres redis mongodb; do \
